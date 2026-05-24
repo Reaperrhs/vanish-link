@@ -1,0 +1,26 @@
+FROM node:20-alpine as build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+
+# Build arguments for Vite env vars (injected during build time)
+ARG VITE_APPWRITE_PUBLIC_ENDPOINT
+ARG VITE_APPWRITE_PROJECT_ID
+ARG VITE_DATABASE_ID
+ARG VITE_COLLECTION_ID
+ARG VITE_API_BASE_URL
+
+ENV VITE_APPWRITE_PUBLIC_ENDPOINT=$VITE_APPWRITE_PUBLIC_ENDPOINT
+ENV VITE_APPWRITE_PROJECT_ID=$VITE_APPWRITE_PROJECT_ID
+ENV VITE_DATABASE_ID=$VITE_DATABASE_ID
+ENV VITE_COLLECTION_ID=$VITE_COLLECTION_ID
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

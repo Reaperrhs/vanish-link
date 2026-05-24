@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - APPWRITE_ENDPOINT=${APPWRITE_ENDPOINT}
+      - APPWRITE_PROJECT_ID=${APPWRITE_PROJECT_ID}
+      - APPWRITE_API_KEY=${APPWRITE_API_KEY}
+      - DATABASE_ID=${DATABASE_ID}
+      - COLLECTION_ID=${COLLECTION_ID}
+      - WORKSPACES_COLLECTION_ID=${WORKSPACES_COLLECTION_ID}
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_APPWRITE_PUBLIC_ENDPOINT=${VITE_APPWRITE_PUBLIC_ENDPOINT}
+        - VITE_APPWRITE_PROJECT_ID=${VITE_APPWRITE_PROJECT_ID}
+        - VITE_DATABASE_ID=${VITE_DATABASE_ID}
+        - VITE_COLLECTION_ID=${VITE_COLLECTION_ID}
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+    ports:
+      - "80:80"
+    restart: always
