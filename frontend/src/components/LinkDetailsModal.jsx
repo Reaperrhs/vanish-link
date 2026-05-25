@@ -24,73 +24,12 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate }) => {
     const fetchAnalytics = async () => {
         setLoading(true);
         try {
-            // Seed pseudo-random generator using the link ID
-            const getSeededRandom = (seedString) => {
-                let hash = 0;
-                for (let i = 0; i < seedString.length; i++) {
-                    hash = seedString.charCodeAt(i) + ((hash << 5) - hash);
-                }
-                return () => {
-                    const x = Math.sin(hash++) * 10000;
-                    return x - Math.floor(x);
-                };
-            };
-            const rand = getSeededRandom(link.$id);
-
-            // Seeded device distribution
-            const mob = Math.floor(rand() * 30) + 50; // 50-80%
-            const dsk = Math.max(5, Math.floor(rand() * (100 - mob - 5))); // leftover
-            const tab = 100 - mob - dsk;
-
-            // Seeded browser distribution
-            const chr = Math.floor(rand() * 25) + 45; // 45-70%
-            const saf = Math.floor(rand() * (100 - chr - 10)) + 5;
-            const ff = Math.floor(rand() * (100 - chr - saf - 3)) + 2;
-            const edg = 100 - chr - saf - ff;
-
-            // Seeded click history over 7 days matching total clicks
-            const totalClicks = link.clicks || 0;
-            const dailyClicks = Array(7).fill(0);
-            if (totalClicks > 0) {
-                let remaining = totalClicks;
-                for (let i = 6; i >= 0; i--) {
-                    if (i === 0) {
-                        dailyClicks[i] = remaining;
-                    } else {
-                        const share = Math.floor(rand() * (remaining / (i + 0.5)));
-                        dailyClicks[i] = share;
-                        remaining -= share;
-                    }
-                }
+            const response = await fetch(`${API_BASE_URL}/api/analytics/${link.$id}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch analytics');
             }
-
-            const realAnalytics = {
-                totalClicks,
-                uniqueVisitors: totalClicks ? Math.max(1, Math.round(totalClicks * (0.7 + rand() * 0.2))) : 0,
-                avgTimeOnPage: totalClicks ? Math.floor(rand() * 60) + 20 : 0,
-                bounceRate: totalClicks ? Math.floor(rand() * 20) + 10 : 0,
-                devices: {
-                    mobile: mob,
-                    desktop: dsk,
-                    tablet: tab
-                },
-                browsers: {
-                    chrome: chr,
-                    safari: saf,
-                    firefox: ff,
-                    edge: edg
-                },
-                referrers: [
-                    { source: 'Direct', count: Math.round(totalClicks * 0.6) },
-                    { source: 'Social Media', count: Math.round(totalClicks * 0.25) },
-                    { source: 'Referral', count: totalClicks - Math.round(totalClicks * 0.6) - Math.round(totalClicks * 0.25) }
-                ].filter(r => r.count > 0),
-                clicksOverTime: Array.from({ length: 7 }, (_, i) => ({
-                    date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-                    clicks: dailyClicks[i]
-                }))
-            };
-            setAnalytics(realAnalytics);
+            const data = await response.json();
+            setAnalytics(data);
         } catch (error) {
             console.error('Error fetching analytics:', error);
         } finally {

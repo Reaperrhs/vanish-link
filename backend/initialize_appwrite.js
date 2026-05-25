@@ -13,6 +13,7 @@ const databases = new Databases(client);
 const DATABASE_ID = process.env.DATABASE_ID;
 const COLLECTION_ID = process.env.COLLECTION_ID;
 const WORKSPACES_COLLECTION_ID = process.env.WORKSPACES_COLLECTION_ID;
+const ANALYTICS_COLLECTION_ID = process.env.ANALYTICS_COLLECTION_ID || 'analytics_telemetry';
 
 async function createStringAttr(collId, key, size, required, defaultValue = null) {
     try {
@@ -140,6 +141,30 @@ async function main() {
             }
         }
 
+        // 3.5. Create Analytics collection if not exists
+        try {
+            await databases.getCollection(DATABASE_ID, ANALYTICS_COLLECTION_ID);
+            console.log(`Collection "Analytics" (${ANALYTICS_COLLECTION_ID}) already exists.`);
+        } catch (e) {
+            if (e.code === 404) {
+                console.log(`Creating "Analytics" collection (${ANALYTICS_COLLECTION_ID})...`);
+                await databases.createCollection(
+                    DATABASE_ID,
+                    ANALYTICS_COLLECTION_ID,
+                    'Analytics',
+                    [
+                        Permission.read(Role.any()),
+                        Permission.create(Role.any()),
+                        Permission.update(Role.any()),
+                        Permission.delete(Role.any())
+                    ]
+                );
+                console.log(`Collection "Analytics" created successfully.`);
+            } else {
+                throw e;
+            }
+        }
+
         // 4. Create Attributes on Links collection
         console.log('\nCreating attributes on Links collection...');
         await createStringAttr(COLLECTION_ID, 'url', 2048, true);
@@ -162,6 +187,18 @@ async function main() {
         const workspacesKeys = ['name'];
         await waitForAttributes(WORKSPACES_COLLECTION_ID, workspacesKeys);
 
+        // 5.5. Create Attributes on Analytics collection
+        console.log('\nCreating attributes on Analytics collection...');
+        await createStringAttr(ANALYTICS_COLLECTION_ID, 'linkId', 255, true);
+        await createStringAttr(ANALYTICS_COLLECTION_ID, 'timestamp', 50, true);
+        await createStringAttr(ANALYTICS_COLLECTION_ID, 'browser', 128, true);
+        await createStringAttr(ANALYTICS_COLLECTION_ID, 'device', 128, true);
+        await createStringAttr(ANALYTICS_COLLECTION_ID, 'referrer', 2048, true);
+        await createStringAttr(ANALYTICS_COLLECTION_ID, 'ipHash', 255, false);
+
+        const analyticsKeys = ['linkId', 'timestamp', 'browser', 'device', 'referrer', 'ipHash'];
+        await waitForAttributes(ANALYTICS_COLLECTION_ID, analyticsKeys);
+
         // 6. Create Indexes
         console.log('\nCreating Indexes...');
         try {
@@ -178,6 +215,25 @@ async function main() {
         } catch (e) {
             if (e.code === 409) {
                 console.log('Index "key_name" already exists.');
+            } else {
+                console.error('Error creating index:', e.message);
+            }
+        }
+
+        try {
+            console.log('Creating index on Analytics "linkId" and "timestamp" attributes...');
+            await databases.createIndex(
+                DATABASE_ID,
+                ANALYTICS_COLLECTION_ID,
+                'key_linkId_timestamp',
+                'key',
+                ['linkId', 'timestamp'],
+                ['asc', 'desc']
+            );
+            console.log('Index "key_linkId_timestamp" created.');
+        } catch (e) {
+            if (e.code === 409) {
+                console.log('Index "key_linkId_timestamp" already exists.');
             } else {
                 console.error('Error creating index:', e.message);
             }
