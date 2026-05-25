@@ -156,8 +156,9 @@ async function shortenDirect(url, type = "standard", slug, workspaceId) {
         payload
     );
 
+    const shortBase = process.env.SHORT_URL_BASE || `http://localhost:${PORT}`;
     return {
-        shortUrl: `http://localhost:${PORT}/${generatedSlug}`,
+        shortUrl: `${shortBase}/${generatedSlug}`,
         slug: generatedSlug,
         originalUrl: url,
         type,
