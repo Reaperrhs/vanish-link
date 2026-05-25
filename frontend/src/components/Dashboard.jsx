@@ -194,7 +194,7 @@ const Dashboard = () => {
                         <h3 className="text-2xl font-bold text-white">Links Management</h3>
                         <p className="mt-1 text-sm text-slate-400">Manage and monitor your shortened URLs.</p>
                     </div>
-                    <div className="flex items-center space-x-4">
+                    <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                         <WorkspaceSelector
                             selectedWorkspaceId={currentWorkspace}
                             onWorkspaceChange={setCurrentWorkspace}
@@ -205,14 +205,14 @@ const Dashboard = () => {
                             <span className="text-sm text-slate-400">Show History</span>
                             <button
                                 onClick={() => setShowArchived(!showArchived)}
-                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${showArchived ? 'bg-indigo-600' : 'bg-slate-700'}`}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-900 cursor-pointer ${showArchived ? 'bg-indigo-600' : 'bg-slate-700'}`}
                             >
                                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showArchived ? 'translate-x-6' : 'translate-x-1'}`} />
                             </button>
                         </div>
                         <button
                             onClick={handleResetAllStats}
-                            className="text-xs bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 rounded-xl px-3 py-1.5 transition-colors text-red-200 flex items-center font-medium"
+                            className="text-xs bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 rounded-xl px-3 py-1.5 transition-colors text-red-200 flex items-center font-medium cursor-pointer"
                         >
                             <svg className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

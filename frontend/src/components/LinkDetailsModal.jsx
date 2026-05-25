@@ -175,14 +175,14 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate }) => {
                 <div className="flex min-h-screen items-center justify-center p-4">
                     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
-                    <div className="relative bg-slate-800 border border-white/10 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                        <div className="p-6">
+                    <div className="relative bg-slate-800 border border-white/10 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-y-auto m-4">
+                        <div className="p-4 sm:p-6">
                             {/* Header */}
                             <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-2xl font-bold text-white">Link Details</h3>
+                                <h3 className="text-xl sm:text-2xl font-bold text-white">Link Details</h3>
                                 <button
                                     onClick={onClose}
-                                    className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                                    className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
                                 >
                                     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -193,22 +193,21 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate }) => {
                             {/* Basic Info */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                                 <div className="space-y-4">
-                                    {/* ... existing Short URL and Dest URL blocks ... */}
                                     <div className="bg-slate-900/50 rounded-xl p-4">
                                         <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Short URL</label>
-                                        <div className="flex items-center justify-between mt-2">
+                                        <div className="flex items-center justify-between mt-2 gap-2 min-w-0">
                                             <a
                                                 href={getFullUrl(link.slug)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="text-lg font-bold text-indigo-400 hover:text-indigo-300 truncate"
+                                                className="text-base sm:text-lg font-bold text-indigo-400 hover:text-indigo-300 truncate min-w-0 flex-1"
                                             >
                                                 {getFullUrl(link.slug)}
                                             </a>
-                                            <div className="flex space-x-2 ml-4">
+                                            <div className="flex space-x-1.5 shrink-0">
                                                 <button
                                                     onClick={() => copyToClipboard(getFullUrl(link.slug))}
-                                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded transition-colors cursor-pointer"
                                                     title="Copy URL"
                                                 >
                                                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -217,7 +216,7 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate }) => {
                                                 </button>
                                                 <button
                                                     onClick={() => setShowQR(true)}
-                                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded transition-colors cursor-pointer"
                                                     title="Generate QR Code"
                                                 >
                                                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -230,18 +229,18 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate }) => {
 
                                     <div className="bg-slate-900/50 rounded-xl p-4">
                                         <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Destination URL</label>
-                                        <div className="flex items-center justify-between mt-2">
+                                        <div className="flex items-center justify-between mt-2 gap-2 min-w-0">
                                             <a
                                                 href={link.url}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="text-sm text-slate-300 hover:text-white truncate"
+                                                className="text-xs sm:text-sm text-slate-300 hover:text-white truncate min-w-0 flex-1"
                                             >
                                                 {link.url}
                                             </a>
                                             <button
                                                 onClick={() => copyToClipboard(link.url)}
-                                                className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded transition-colors ml-4"
+                                                className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded transition-colors shrink-0 cursor-pointer"
                                                 title="Copy URL"
                                             >
                                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -253,11 +252,11 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate }) => {
 
                                     <div className="bg-slate-900/50 rounded-xl p-4">
                                         <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Link ID</label>
-                                        <div className="flex items-center justify-between mt-2">
-                                            <span className="text-sm font-mono text-slate-400">{link.$id}</span>
+                                        <div className="flex items-center justify-between mt-2 gap-2 min-w-0">
+                                            <span className="text-xs sm:text-sm font-mono text-slate-400 truncate min-w-0 flex-1 select-all">{link.$id}</span>
                                             <button
                                                 onClick={() => copyToClipboard(link.$id)}
-                                                className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                                                className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded transition-colors shrink-0 cursor-pointer"
                                                 title="Copy ID"
                                             >
                                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -280,7 +279,7 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate }) => {
                                         <button
                                             onClick={handleGenerateChildLink}
                                             disabled={generating}
-                                            className="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center"
+                                            className="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center cursor-pointer"
                                         >
                                             {generating ? 'Generating...' : 'Generate One-Time Link'}
                                         </button>
@@ -288,11 +287,11 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate }) => {
                                         {generatedChild && (
                                             <div className="mt-3 p-3 bg-slate-800 rounded-lg border border-indigo-500/30 animate-fade-in">
                                                 <p className="text-xs text-green-400 font-bold mb-1">New Link Created!</p>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-sm font-mono text-white truncate mr-2">{generatedChild.shortUrl}</span>
+                                                <div className="flex items-center justify-between gap-2 min-w-0">
+                                                    <span className="text-sm font-mono text-white truncate min-w-0 flex-1">{generatedChild.shortUrl}</span>
                                                     <button
                                                         onClick={() => copyToClipboard(generatedChild.shortUrl)}
-                                                        className="text-indigo-400 hover:text-white p-1"
+                                                        className="text-indigo-400 hover:text-white p-1 shrink-0 cursor-pointer"
                                                     >
                                                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
@@ -305,7 +304,6 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate }) => {
                                 </div>
 
                                 <div className="space-y-4">
-                                    {/* ... existing Type/Status, Stats, Dates blocks ... */}
                                     <div className="bg-slate-900/50 rounded-xl p-4">
                                         <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Type & Status</label>
                                         <div className="mt-2 space-y-2">
@@ -349,7 +347,7 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate }) => {
                                             <button
                                                 onClick={handleResetIndividualStats}
                                                 disabled={loading}
-                                                className="text-xs text-red-400 hover:text-red-300 flex items-center transition-colors font-medium bg-red-950/20 hover:bg-red-950/40 border border-red-500/20 px-2 py-1 rounded"
+                                                className="text-xs text-red-400 hover:text-red-300 flex items-center transition-colors font-medium bg-red-950/20 hover:bg-red-950/40 border border-red-500/20 px-2.5 py-1 rounded cursor-pointer"
                                                 title="Reset stats for this link"
                                             >
                                                 <svg className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -383,7 +381,6 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate }) => {
                             </div>
 
                             {/* Analytics Section */}
-                            {/* ... keep existing analytics jsx ... */}
                             {loading ? (
                                 <div className="flex justify-center items-center h-64">
                                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
@@ -392,36 +389,36 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate }) => {
                                 <div className="space-y-6">
                                     <h4 className="text-lg font-semibold text-white">Analytics Overview</h4>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                                         <div className="bg-slate-900/50 rounded-xl p-4">
-                                            <div className="text-2xl font-bold text-indigo-400">{analytics.totalClicks}</div>
+                                            <div className="text-xl sm:text-2xl font-bold text-indigo-400">{analytics.totalClicks}</div>
                                             <div className="text-xs text-slate-400 mt-1">Total Clicks</div>
                                         </div>
                                         <div className="bg-slate-900/50 rounded-xl p-4">
-                                            <div className="text-2xl font-bold text-emerald-400">{analytics.uniqueVisitors}</div>
+                                            <div className="text-xl sm:text-2xl font-bold text-emerald-400">{analytics.uniqueVisitors}</div>
                                             <div className="text-xs text-slate-400 mt-1">Unique Visitors</div>
                                         </div>
                                         <div className="bg-slate-900/50 rounded-xl p-4">
-                                            <div className="text-2xl font-bold text-purple-400">{analytics.avgTimeOnPage}s</div>
-                                            <div className="text-xs text-slate-400 mt-1">Avg. Time on Page</div>
+                                            <div className="text-xl sm:text-2xl font-bold text-purple-400">{analytics.avgTimeOnPage}s</div>
+                                            <div className="text-xs text-slate-400 mt-1">Avg. Time</div>
                                         </div>
                                         <div className="bg-slate-900/50 rounded-xl p-4">
-                                            <div className="text-2xl font-bold text-yellow-400">{analytics.bounceRate}%</div>
+                                            <div className="text-xl sm:text-2xl font-bold text-yellow-400">{analytics.bounceRate}%</div>
                                             <div className="text-xs text-slate-400 mt-1">Bounce Rate</div>
                                         </div>
                                     </div>
 
-                                    <div className="bg-slate-900/50 rounded-xl p-4">
+                                    <div className="bg-slate-900/50 rounded-xl p-4 overflow-hidden">
                                         <h5 className="text-sm font-medium text-white mb-3">Clicks Over Time (Last 7 Days)</h5>
-                                        <div className="flex items-end justify-between h-32">
+                                        <div className="flex items-end justify-between h-32 pb-8">
                                             {analytics.clicksOverTime.map((day, index) => (
-                                                <div key={index} className="flex flex-col items-center flex-1">
+                                                <div key={index} className="flex flex-col items-center flex-1 px-0.5 sm:px-1">
                                                     <div
-                                                        className="w-full bg-indigo-600 rounded-t"
-                                                        style={{ height: `${(day.clicks / Math.max(...analytics.clicksOverTime.map(d => d.clicks))) * 100}%` }}
+                                                        className="w-full bg-indigo-600 rounded-t min-h-[2px]"
+                                                        style={{ height: `${Math.max(2, (day.clicks / Math.max(...analytics.clicksOverTime.map(d => d.clicks), 1)) * 100)}%` }}
                                                     ></div>
-                                                    <div className="text-xs text-slate-400 mt-1 rotate-45 origin-left">
-                                                        {day.date.split('/')[0]}
+                                                    <div className="text-[9px] sm:text-xs text-slate-400 mt-2 rotate-45 origin-top-left whitespace-nowrap">
+                                                        {day.date}
                                                     </div>
                                                 </div>
                                             ))}
