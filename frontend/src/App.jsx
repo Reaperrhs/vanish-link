@@ -24,9 +24,7 @@ const AppHeader = () => {
     <header className="relative z-20 border-b border-white/10 backdrop-blur-md bg-slate-900/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <span className="text-lg font-bold">V</span>
-          </div>
+          <img src="/favicon.png" alt="VanishLink Logo" className="w-8 h-8 rounded-lg object-cover" />
           <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
             VanishLink
           </h1>

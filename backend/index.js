@@ -91,11 +91,24 @@ app.post('/api/shorten', async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        // Prevent recursive shortening
+        // Prevent recursive shortening using SHORT_URL_BASE if configured, falling back to request host
+        const shortUrlBase = process.env.SHORT_URL_BASE;
         const currentHost = req.get('host');
         try {
             const urlObj = new URL(url);
-            if (urlObj.host === currentHost) {
+            let isRecursive = false;
+            if (shortUrlBase) {
+                try {
+                    const shortUrlObj = new URL(shortUrlBase);
+                    if (urlObj.host === shortUrlObj.host) {
+                        isRecursive = true;
+                    }
+                } catch (e) {}
+            }
+            if (!shortUrlBase && urlObj.host === currentHost) {
+                isRecursive = true;
+            }
+            if (isRecursive) {
                 return res.status(400).json({ error: 'You cannot shorten a URL from this service.' });
             }
         } catch (e) {
@@ -147,8 +160,9 @@ app.post('/api/shorten', async (req, res) => {
             payload
         );
 
+        const activeBase = shortUrlBase ? (shortUrlBase.endsWith('/') ? shortUrlBase.slice(0, -1) : shortUrlBase) : `${req.protocol}://${currentHost}`;
         res.json({
-            shortUrl: `${req.protocol}://${req.get('host')}/${generatedSlug}`,
+            shortUrl: `${activeBase}/${generatedSlug}`,
             slug: generatedSlug,
             originalUrl: url,
             type,
