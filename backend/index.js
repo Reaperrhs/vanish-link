@@ -181,6 +181,16 @@ app.post('/api/shorten', async (req, res) => {
 
         const generatedSlug = slug || Math.random().toString(36).substring(2, 8);
 
+        // Check for slug collision
+        const existingSlug = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTION_ID,
+            [Query.equal('slug', generatedSlug), Query.limit(1)]
+        );
+        if (existingSlug.documents.length > 0) {
+            return res.status(409).json({ error: 'This custom slug is already taken. Please choose another.' });
+        }
+
         let expiresAt = null;
         if (type === '24h') {
             const date = new Date();
@@ -191,6 +201,7 @@ app.post('/api/shorten', async (req, res) => {
         const payload = {
             url,
             type,
+            slug: generatedSlug,
             active: true,
             clicks: 0,
             generatedCount: 0,
@@ -220,7 +231,7 @@ app.post('/api/shorten', async (req, res) => {
         const doc = await databases.createDocument(
             DATABASE_ID,
             COLLECTION_ID,
-            generatedSlug,
+            ID.unique(),
             payload
         );
 
@@ -250,7 +261,25 @@ app.post('/api/shorten', async (req, res) => {
 app.post('/api/reset/:slug', async (req, res) => {
     try {
         const { slug } = req.params;
-        const doc = await databases.updateDocument(DATABASE_ID, COLLECTION_ID, slug, {
+
+        // Look up document by slug field first, fall back to document ID for old links
+        let docId;
+        try {
+            const slugResponse = await databases.listDocuments(
+                DATABASE_ID,
+                COLLECTION_ID,
+                [Query.equal('slug', slug), Query.limit(1)]
+            );
+            if (slugResponse.documents.length > 0) {
+                docId = slugResponse.documents[0].$id;
+            } else {
+                docId = slug;
+            }
+        } catch (e) {
+            docId = slug;
+        }
+
+        const doc = await databases.updateDocument(DATABASE_ID, COLLECTION_ID, docId, {
             clicks: 0,
             generatedCount: 0,
             burnedCount: 0
@@ -262,7 +291,7 @@ app.post('/api/reset/:slug', async (req, res) => {
                 DATABASE_ID,
                 ANALYTICS_COLLECTION_ID,
                 [
-                    Query.equal('linkId', slug),
+                    Query.equal('linkId', docId),
                     Query.limit(100)
                 ]
             );
@@ -383,10 +412,24 @@ app.get('/api/analytics/:id', async (req, res) => {
     const { id } = req.params;
 
     try {
-        // Fetch the link document first
-        const link = await databases.getDocument(DATABASE_ID, COLLECTION_ID, id);
-        if (!link) {
-            return res.status(404).json({ error: 'Link not found' });
+        // Try fetching by document ID first, fall back to slug field lookup
+        let link;
+        let linkId;
+        try {
+            link = await databases.getDocument(DATABASE_ID, COLLECTION_ID, id);
+            linkId = link.$id;
+        } catch (e) {
+            // Document ID lookup failed — try slug field
+            const slugResponse = await databases.listDocuments(
+                DATABASE_ID,
+                COLLECTION_ID,
+                [Query.equal('slug', id), Query.limit(1)]
+            );
+            if (slugResponse.documents.length === 0) {
+                return res.status(404).json({ error: 'Link not found' });
+            }
+            link = slugResponse.documents[0];
+            linkId = link.$id;
         }
 
         // Fetch click logs from the last 7 days
@@ -397,7 +440,7 @@ app.get('/api/analytics/:id', async (req, res) => {
             DATABASE_ID,
             ANALYTICS_COLLECTION_ID,
             [
-                Query.equal('linkId', id),
+                Query.equal('linkId', linkId),
                 Query.greaterThanEqual('timestamp', sevenDaysAgo.toISOString()),
                 Query.limit(5000)
             ]
@@ -521,7 +564,22 @@ app.get('/:slug', async (req, res) => {
     const { slug } = req.params;
 
     try {
-        const doc = await databases.getDocument(DATABASE_ID, COLLECTION_ID, slug);
+        // Look up by slug field first, fall back to document ID for old links
+        let doc;
+        try {
+            const slugResponse = await databases.listDocuments(
+                DATABASE_ID,
+                COLLECTION_ID,
+                [Query.equal('slug', slug), Query.limit(1)]
+            );
+            if (slugResponse.documents.length > 0) {
+                doc = slugResponse.documents[0];
+            } else {
+                doc = await databases.getDocument(DATABASE_ID, COLLECTION_ID, slug);
+            }
+        } catch (e) {
+            doc = await databases.getDocument(DATABASE_ID, COLLECTION_ID, slug);
+        }
 
         if (!doc || !doc.active) {
             return res.status(410).send('Link has expired or been burned');
@@ -532,7 +590,7 @@ app.get('/:slug', async (req, res) => {
             const now = new Date();
             const expires = new Date(doc.expiresAt);
             if (now > expires) {
-                await databases.updateDocument(DATABASE_ID, COLLECTION_ID, slug, { active: false });
+                await databases.updateDocument(DATABASE_ID, COLLECTION_ID, doc.$id, { active: false });
                 return res.status(410).send('Link has expired');
             }
         }
@@ -540,7 +598,7 @@ app.get('/:slug', async (req, res) => {
         // Check One-Time
         if (doc.type === 'onetime') {
             // Soft Delete (Burn)
-            await databases.updateDocument(DATABASE_ID, COLLECTION_ID, slug, {
+            await databases.updateDocument(DATABASE_ID, COLLECTION_ID, doc.$id, {
                 active: false,
                 clicks: (doc.clicks || 0) + 1,
                 burnedCount: (doc.burnedCount || 0) + 1
@@ -564,7 +622,7 @@ app.get('/:slug', async (req, res) => {
         }
 
         // Standard: Update clicks
-        await databases.updateDocument(DATABASE_ID, COLLECTION_ID, slug, {
+        await databases.updateDocument(DATABASE_ID, COLLECTION_ID, doc.$id, {
             clicks: (doc.clicks || 0) + 1
         });
 
