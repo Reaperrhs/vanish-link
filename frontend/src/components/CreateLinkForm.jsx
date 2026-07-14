@@ -1,6 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import WorkspaceSelector from './WorkspaceSelector';
-import { API_BASE_URL } from '../lib/appwrite';
+import { API_BASE_URL, SHORT_URL_BASE } from '../lib/appwrite';
+
+const RESERVED_SLUGS = ['api', 'dashboard', 'admin', 'login', 'static', 'favicon.png', 'health'];
+
+const validateSlug = (slug) => {
+    if (!slug) return null; // Optional field
+    if (slug.length < 3) return 'Slug must be at least 3 characters';
+    if (slug.length > 50) return 'Slug must be at most 50 characters';
+    if (!/^[a-zA-Z0-9-]+$/.test(slug)) return 'Slug can only contain letters, numbers, and hyphens';
+    if (RESERVED_SLUGS.includes(slug.toLowerCase())) return 'This slug is reserved and cannot be used';
+    return null;
+};
 
 const CreateLinkForm = () => {
     const [url, setUrl] = useState('');
@@ -26,8 +37,24 @@ const CreateLinkForm = () => {
         };
     }, []);
 
+    const [slugError, setSlugError] = useState(null);
+
+    const handleSlugChange = (e) => {
+        const value = e.target.value;
+        setSlug(value);
+        setSlugError(validateSlug(value));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Validate slug before submission
+        const slugErr = validateSlug(slug);
+        if (slugErr) {
+            setSlugError(slugErr);
+            return;
+        }
+
         setLoading(true);
         setError(null);
         setCreatedLink(null);
@@ -47,6 +74,8 @@ const CreateLinkForm = () => {
             }
 
             const data = await response.json();
+            // Override shortUrl with SHORT_URL_BASE for local dev consistency
+            data.shortUrl = `${SHORT_URL_BASE}/${data.slug}`;
             setCreatedLink(data);
 
             // reset form (keep workspace selected)
@@ -60,6 +89,17 @@ const CreateLinkForm = () => {
             setLoading(false);
         }
     };
+
+    // Close modal on Escape key
+    useEffect(() => {
+        const handleEsc = (e) => {
+            if (e.key === 'Escape' && createdLink) {
+                setCreatedLink(null);
+            }
+        };
+        document.addEventListener('keydown', handleEsc);
+        return () => document.removeEventListener('keydown', handleEsc);
+    }, [createdLink]);
 
     return (
         <div className="max-w-2xl mx-auto">
@@ -105,10 +145,13 @@ const CreateLinkForm = () => {
                                     <input
                                         type="text"
                                         value={slug}
-                                        onChange={(e) => setSlug(e.target.value)}
-                                        className="block w-full bg-slate-900/50 border border-white/10 rounded-xl py-3 pl-8 pr-4 text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                        onChange={handleSlugChange}
+                                        className={`block w-full bg-slate-900/50 border rounded-xl py-3 pl-8 pr-4 text-white placeholder-slate-500 focus:ring-2 focus:border-transparent transition-all ${slugError ? 'border-red-500/50 focus:ring-red-500' : 'border-white/10 focus:ring-indigo-500'}`} 
                                         placeholder="alias"
                                     />
+                                    {slugError && (
+                                        <p className="mt-1.5 text-xs text-red-400">{slugError}</p>
+                                    )}
                                 </div>
                             </div>
 

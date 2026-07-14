@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { databases } from '../lib/appwrite';
+import { databases, SHORT_URL_BASE } from '../lib/appwrite';
 
 const DATABASE_ID = import.meta.env.VITE_DATABASE_ID;
 const COLLECTION_ID = import.meta.env.VITE_COLLECTION_ID;
@@ -141,8 +141,7 @@ const DashboardBulkActions = ({
         if (selectedLinks.length === 0) return;
 
         const selectedLinksData = links.filter(link => selectedLinks.includes(link.$id));
-        const baseUrl = window.location.origin;
-        const urls = selectedLinksData.map(link => `${baseUrl}/${link.slug}`).join('\n');
+        const urls = selectedLinksData.map(link => `${SHORT_URL_BASE}/${link.slug}`).join('\n');
 
         navigator.clipboard.writeText(urls).then(() => {
             showToast(`Copied ${selectedLinks.length} link(s) to clipboard`, 'success');

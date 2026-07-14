@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import QRCodeGenerator from './QRCodeGenerator';
-import { API_BASE_URL } from '../lib/appwrite';
+import { API_BASE_URL, SHORT_URL_BASE } from '../lib/appwrite';
 
-const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate }) => {
+const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate, showToast: parentShowToast }) => {
     const [link, setLink] = useState(initialLink);
     const [showQR, setShowQR] = useState(false);
     const [analytics, setAnalytics] = useState(null);
@@ -37,13 +37,29 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate }) => {
         }
     };
 
+    const showToast = (message, type = 'success') => {
+        if (parentShowToast) {
+            parentShowToast(message, type);
+        } else {
+            // fallback inline toast
+            const el = document.createElement('div');
+            el.className = `fixed top-4 right-4 z-[60] p-4 rounded-lg shadow-lg ${type === 'success' ? 'bg-emerald-600' : 'bg-red-600'} text-white`;
+            el.textContent = message;
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 3000);
+        }
+    };
+
     const copyToClipboard = (text) => {
-        navigator.clipboard.writeText(text);
-        // You could add a toast notification here
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('Copied to clipboard');
+        }).catch(() => {
+            showToast('Failed to copy', 'error');
+        });
     };
 
     const getFullUrl = (slug) => {
-        return `${API_BASE_URL}/${slug}`;
+        return `${SHORT_URL_BASE}/${slug}`;
     };
 
     const handleGenerateChildLink = async () => {

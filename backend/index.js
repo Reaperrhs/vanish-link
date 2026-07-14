@@ -82,8 +82,58 @@ app.delete('/api/workspaces/:id', async (req, res) => {
     }
 });
 
+// List Links with pagination
+app.get('/api/links', async (req, res) => {
+    try {
+        const { workspaceId } = req.query;
+        const limit = Math.min(parseInt(req.query.limit) || 25, 100);
+        const offset = parseInt(req.query.offset) || 0;
+
+        const queries = [Query.limit(limit), Query.offset(offset)];
+
+        if (workspaceId) {
+            if (workspaceId === 'personal') {
+                queries.push(Query.isNull('workspaceId'));
+            } else {
+                queries.push(Query.equal('workspaceId', workspaceId));
+            }
+        }
+
+        const response = await databases.listDocuments(DATABASE_ID, COLLECTION_ID, queries);
+        res.json({ documents: response.documents, total: response.total });
+    } catch (error) {
+        console.error('Error fetching links:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Rate limiter for POST /api/shorten — 20 requests per IP per minute
+const shortenRateLimiter = new Map();
+function checkRateLimit(ip) {
+    const now = Date.now();
+    const windowMs = 60 * 1000;
+    const maxRequests = 20;
+    if (!shortenRateLimiter.has(ip)) {
+        shortenRateLimiter.set(ip, []);
+    }
+    const requests = shortenRateLimiter.get(ip);
+    const validRequests = requests.filter(timestamp => now - timestamp < windowMs);
+    if (validRequests.length >= maxRequests) {
+        return false;
+    }
+    validRequests.push(now);
+    shortenRateLimiter.set(ip, validRequests);
+    return true;
+}
+
 // Create Link
 app.post('/api/shorten', async (req, res) => {
+    // Rate limiting
+    const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+    if (!checkRateLimit(clientIp)) {
+        return res.status(429).json({ error: 'Rate limit exceeded. Please try again later.' });
+    }
+
     try {
         const { url, type, parentId, slug, workspaceId } = req.body;
 
@@ -113,6 +163,20 @@ app.post('/api/shorten', async (req, res) => {
             }
         } catch (e) {
             // Invalid URL, let Appwrite validation handle it or fail later
+        }
+
+        // Validate custom slug if provided
+        if (slug) {
+            if (slug.length < 3 || slug.length > 50) {
+                return res.status(400).json({ error: 'Custom slug must be 3-50 characters long.' });
+            }
+            if (!/^[a-zA-Z0-9-]+$/.test(slug)) {
+                return res.status(400).json({ error: 'Custom slug must be alphanumeric with hyphens only.' });
+            }
+            const reservedWords = ['api', 'dashboard', 'admin', 'login', 'static', 'favicon.png', 'health'];
+            if (reservedWords.includes(slug.toLowerCase())) {
+                return res.status(400).json({ error: 'This slug is reserved. Please choose another.' });
+            }
         }
 
         const generatedSlug = slug || Math.random().toString(36).substring(2, 8);
@@ -172,6 +236,11 @@ app.post('/api/shorten', async (req, res) => {
         });
 
     } catch (error) {
+        // Check for duplicate/conflict slug error
+        const errMsg = (error.message || '').toLowerCase();
+        if (error.code === 409 || errMsg.includes('duplicate') || errMsg.includes('already exists')) {
+            return res.status(409).json({ error: 'This custom slug is already taken. Please choose another.' });
+        }
         console.error('Error creating link:', error);
         res.status(500).json({ error: error.message });
     }
@@ -433,8 +502,8 @@ app.get('/api/analytics/:id', async (req, res) => {
         res.json({
             totalClicks: link.clicks || 0,
             uniqueVisitors: uniqueIps.size,
-            avgTimeOnPage: link.clicks ? Math.floor(Math.random() * 40) + 20 : 0,
-            bounceRate: link.clicks ? Math.floor(Math.random() * 15) + 15 : 0,
+            avgTimeOnPage: null,
+            bounceRate: null,
             devices: devicePercentages,
             browsers: browserPercentages,
             referrers,

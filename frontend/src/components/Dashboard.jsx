@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { databases, client, API_BASE_URL } from '../lib/appwrite';
+import { databases, client, API_BASE_URL, SHORT_URL_BASE } from '../lib/appwrite';
 import { Query } from 'appwrite';
 import DashboardStats from './DashboardStats';
 import DashboardSearch from './DashboardSearch';
@@ -11,6 +11,51 @@ import DashboardVisuals from './DashboardVisuals';
 
 const DATABASE_ID = import.meta.env.VITE_DATABASE_ID;
 const COLLECTION_ID = import.meta.env.VITE_COLLECTION_ID;
+
+const DashboardSkeleton = () => (
+    <div className="space-y-6 animate-fade-in">
+        {/* Header skeleton */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <div className="h-8 w-48 skeleton-shimmer rounded-lg"></div>
+                <div className="h-4 w-64 skeleton-shimmer rounded-lg mt-2"></div>
+            </div>
+            <div className="flex gap-3">
+                <div className="h-10 w-40 skeleton-shimmer rounded-lg"></div>
+                <div className="h-10 w-24 skeleton-shimmer rounded-lg"></div>
+                <div className="h-10 w-28 skeleton-shimmer rounded-lg"></div>
+            </div>
+        </div>
+        {/* Stats skeleton */}
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+            {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-slate-800/50 border border-white/10 rounded-xl p-4">
+                    <div className="h-10 w-10 skeleton-shimmer rounded-lg mb-3"></div>
+                    <div className="h-6 w-16 skeleton-shimmer rounded mb-2"></div>
+                    <div className="h-3 w-20 skeleton-shimmer rounded"></div>
+                </div>
+            ))}
+        </div>
+        {/* Chart skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-slate-800/40 border border-white/10 rounded-2xl p-6 h-48 skeleton-shimmer"></div>
+            <div className="bg-slate-800/40 border border-white/10 rounded-2xl p-6 h-48 skeleton-shimmer"></div>
+        </div>
+        {/* Link list skeleton */}
+        <div className="bg-slate-800/50 border border-white/10 rounded-2xl overflow-hidden">
+            {[...Array(4)].map((_, i) => (
+                <div key={i} className="px-6 py-5 border-b border-white/5 flex items-center gap-4">
+                    <div className="h-5 w-5 skeleton-shimmer rounded"></div>
+                    <div className="flex-1">
+                        <div className="h-5 w-32 skeleton-shimmer rounded mb-2"></div>
+                        <div className="h-3 w-48 skeleton-shimmer rounded"></div>
+                    </div>
+                    <div className="h-5 w-20 skeleton-shimmer rounded"></div>
+                </div>
+            ))}
+        </div>
+    </div>
+);
 
 const Dashboard = () => {
     const [links, setLinks] = useState([]);
@@ -138,7 +183,7 @@ const Dashboard = () => {
 
     const copyToClipboard = async (slug) => {
         try {
-            const shortUrl = `${API_BASE_URL}/${slug}`;
+            const shortUrl = `${SHORT_URL_BASE}/${slug}`;
             await navigator.clipboard.writeText(shortUrl);
             showToastNotification('Link copied to clipboard');
         } catch (err) {
@@ -173,8 +218,16 @@ const Dashboard = () => {
         });
     }, [links, currentWorkspace]);
 
+    if (loading) {
+        return (
+            <div className="space-y-6">
+                <DashboardSkeleton />
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-fade-in">
             {/* Toast Notification */}
             {showToast && (
                 <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transform transition-all duration-300 ${toastType === 'success' ? 'bg-emerald-600 text-white' :
@@ -293,6 +346,7 @@ const Dashboard = () => {
                     link={selectedLink}
                     onClose={() => setSelectedLink(null)}
                     onLinkUpdate={handleLinksUpdate}
+                    showToast={showToastNotification}
                 />
             )}
         </div>

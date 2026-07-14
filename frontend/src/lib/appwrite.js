@@ -10,3 +10,4 @@ export const databases = new Databases(client);
 export const account = new Account(client);
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+export const SHORT_URL_BASE = import.meta.env.VITE_SHORT_URL_BASE || API_BASE_URL;
