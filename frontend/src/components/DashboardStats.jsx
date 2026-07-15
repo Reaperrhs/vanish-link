@@ -131,7 +131,7 @@ const DashboardStats = ({ links }) => {
     ];
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-3 md:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4 mb-4 md:mb-8">
             {statCards.map((card, index) => (
                 <div key={index} className={`${card.bgColor} backdrop-blur-xl border ${card.borderColor} rounded-xl p-4 transition-all hover:scale-[1.02] hover:shadow-lg`}>
                     <div className="flex items-center justify-between mb-2">

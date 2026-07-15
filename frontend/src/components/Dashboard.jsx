@@ -280,8 +280,10 @@ const Dashboard = () => {
                 <DashboardStats links={statsLinks} />
             </div>
 
-            {/* Dashboard Visual Analytics */}
-            <DashboardVisuals links={statsLinks} />
+            {/* Dashboard Visual Analytics — hidden on mobile to save space */}
+            <div className="hidden lg:block">
+                <DashboardVisuals links={statsLinks} />
+            </div>
 
             {/* Search and Filter */}
             <DashboardSearch
