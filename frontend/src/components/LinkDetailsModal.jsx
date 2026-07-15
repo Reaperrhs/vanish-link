@@ -205,19 +205,19 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate, showToast:
                                             <div className="flex space-x-1.5 shrink-0">
                                                 <button
                                                     onClick={() => copyToClipboard(getFullUrl(link.slug))}
-                                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded transition-colors cursor-pointer"
+                                                    className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
                                                     title="Copy URL"
                                                 >
-                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                                                     </svg>
                                                 </button>
                                                 <button
                                                     onClick={() => setShowQR(true)}
-                                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded transition-colors cursor-pointer"
+                                                    className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
                                                     title="Generate QR Code"
                                                 >
-                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h2M8 20h2M4 8h2M4 16h2m-2-4h2m2 4h.01" />
                                                     </svg>
                                                 </button>
@@ -279,10 +279,10 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate, showToast:
                                                 </a>
                                                 <button
                                                     onClick={() => copyToClipboard(link.url)}
-                                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded transition-colors shrink-0 cursor-pointer"
+                                                    className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0 cursor-pointer"
                                                     title="Copy URL"
                                                 >
-                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                                                     </svg>
                                                 </button>
@@ -296,10 +296,10 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate, showToast:
                                             <span className="text-xs sm:text-sm font-mono text-slate-400 truncate min-w-0 flex-1 select-all">{link.$id}</span>
                                             <button
                                                 onClick={() => copyToClipboard(link.$id)}
-                                                className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded transition-colors shrink-0 cursor-pointer"
+                                                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0 cursor-pointer"
                                                 title="Copy ID"
                                             >
-                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                                                 </svg>
                                             </button>
@@ -309,7 +309,7 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate, showToast:
                                     {/* MASTER LINK GENERATOR */}
                                     <div className="bg-indigo-900/20 border border-indigo-500/20 rounded-xl p-4">
                                         <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center">
-                                            <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                                             </svg>
                                             Generator Zone
@@ -333,7 +333,7 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate, showToast:
                                                         onClick={() => copyToClipboard(generatedChild.shortUrl)}
                                                         className="text-indigo-400 hover:text-white p-1 shrink-0 cursor-pointer"
                                                     >
-                                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                                                         </svg>
                                                     </button>
