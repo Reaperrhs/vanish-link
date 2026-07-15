@@ -559,6 +559,41 @@ app.get('/api/analytics/:id', async (req, res) => {
     }
 });
 
+// Edit Link URL
+app.put('/api/links/:id', async (req, res) => {
+    try {
+        const { url } = req.body;
+        if (!url) {
+            return res.status(400).json({ error: 'URL is required' });
+        }
+        try {
+            new URL(url);
+        } catch (e) {
+            return res.status(400).json({ error: 'Invalid URL' });
+        }
+        // Look up document by slug field first, fall back to document ID
+        let docId = req.params.id;
+        try {
+            const slugResponse = await databases.listDocuments(
+                DATABASE_ID,
+                COLLECTION_ID,
+                [Query.equal('slug', req.params.id), Query.limit(1)]
+            );
+            if (slugResponse.documents.length > 0) {
+                docId = slugResponse.documents[0].$id;
+            }
+        } catch (e) {}
+        const doc = await databases.updateDocument(DATABASE_ID, COLLECTION_ID, docId, { url });
+        res.json(doc);
+    } catch (error) {
+        if (error.code === 404) {
+            return res.status(404).json({ error: 'Link not found' });
+        }
+        console.error('Error updating link:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Redirect Logic
 app.get('/:slug', async (req, res) => {
     const { slug } = req.params;
