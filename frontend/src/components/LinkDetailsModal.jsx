@@ -218,7 +218,7 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate, showToast:
                                                     title="Generate QR Code"
                                                 >
                                                     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h2M8 20h2M4 8h2M4 16h2m-2-4h2m2 4h.01" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h7v7H3V3zm0 11h7v7H3v-7zm11-11h7v7h-7V3zm0 11h3v3h-3v-3zm5 0h2v2h-2v-2zm-5 5h2v2h-2v-2zm5 0h2v2h-2v-2zm0-5h2v2h-2v-2z" />
                                                     </svg>
                                                 </button>
                                             </div>
