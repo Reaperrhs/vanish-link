@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
+import { SHORT_URL_BASE } from '../lib/appwrite';
 
 const QRCodeGenerator = ({ link, onClose }) => {
     const [qrSize, setQrSize] = useState(256);
@@ -9,7 +10,7 @@ const QRCodeGenerator = ({ link, onClose }) => {
     const [errorLevel, setErrorLevel] = useState('M');
     const canvasRef = React.useRef(null);
 
-    const shortUrl = link.shortUrl || `${window.location.origin.replace(/:\d+$/, ':3000')}/${link.slug || link.$id}`;
+    const shortUrl = link.shortUrl || `${SHORT_URL_BASE}/${link.slug || link.$id}`;
 
     const downloadQRCode = () => {
         const canvas = canvasRef.current?.querySelector('canvas');
