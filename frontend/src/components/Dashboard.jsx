@@ -5,6 +5,7 @@ import DashboardStats from './DashboardStats';
 import DashboardSearch from './DashboardSearch';
 import DashboardBulkActions from './DashboardBulkActions';
 import LinkDetailsModal from './LinkDetailsModal';
+import QRCodeGenerator from './QRCodeGenerator';
 import WorkspaceSelector from './WorkspaceSelector';
 import LinkItem from './LinkItem';
 import DashboardVisuals from './DashboardVisuals';
@@ -68,6 +69,7 @@ const Dashboard = () => {
     const [toastMessage, setToastMessage] = useState('');
     const [toastType, setToastType] = useState('success');
     const [currentWorkspace, setCurrentWorkspace] = useState('all');
+    const [qrLink, setQrLink] = useState(null);
 
     const fetchLinks = async () => {
         setLoading(true);
@@ -310,6 +312,7 @@ const Dashboard = () => {
                             onSelectLink={setSelectedLink}
                             onCopy={copyToClipboard}
                             onDelete={handleDelete}
+                            onQR={setQrLink}
                         />
                     ))}
                     {filteredLinks.length === 0 && (
@@ -339,6 +342,11 @@ const Dashboard = () => {
                     )}
                 </ul>
             </div>
+
+            {/* QR Code Modal (from link item) */}
+            {qrLink && (
+                <QRCodeGenerator link={qrLink} onClose={() => setQrLink(null)} />
+            )}
 
             {/* Link Details Modal */}
             {selectedLink && (

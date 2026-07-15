@@ -6,7 +6,8 @@ const LinkItem = ({
     onSelectionChange,
     onSelectLink,
     onCopy,
-    onDelete
+    onDelete,
+    onQR
 }) => {
     return (
         <li className={`px-4 sm:px-6 py-5 transition-colors group ${!link.active ? 'opacity-60 bg-red-900/10' : 'hover:bg-white/5'}`}>
@@ -24,7 +25,7 @@ const LinkItem = ({
                                 className="text-base sm:text-lg font-bold text-indigo-400 truncate cursor-pointer hover:text-indigo-300"
                                 onClick={() => onSelectLink(link)}
                             >
-                                {link.slug}
+                                {link.slug || link.$id}
                             </span>
                             <span className={`px-2 py-0.5 rounded text-xs font-medium border shrink-0 ${!link.active ? 'bg-slate-700 text-slate-300 border-slate-600' :
                                 link.type === 'onetime' ? 'bg-red-900/30 text-red-300 border-red-500/30' :
@@ -69,10 +70,19 @@ const LinkItem = ({
                         <button
                             onClick={() => onCopy(link.$id)}
                             className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
-                            title="Copy Master ID"
+                            title="Copy Short URL"
                         >
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        </button>
+                        <button
+                            onClick={() => onQR(link)}
+                            className="p-2 text-slate-400 hover:text-purple-400 hover:bg-purple-900/20 rounded-lg transition-colors cursor-pointer"
+                            title="Generate QR Code"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h2M8 20h2M4 8h2M4 16h2m-2-4h2m2 4h.01" />
                             </svg>
                         </button>
                         <button
@@ -81,8 +91,7 @@ const LinkItem = ({
                             title="View Details"
                         >
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                         </button>
                         <button

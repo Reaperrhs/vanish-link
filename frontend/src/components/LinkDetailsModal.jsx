@@ -9,6 +9,9 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate, showToast:
     const [loading, setLoading] = useState(false);
     const [generating, setGenerating] = useState(false);
     const [generatedChild, setGeneratedChild] = useState(null);
+    const [isEditingUrl, setIsEditingUrl] = useState(false);
+    const [editUrlValue, setEditUrlValue] = useState('');
+    const [savingUrl, setSavingUrl] = useState(false);
 
     useEffect(() => {
         setLink(initialLink);
@@ -89,6 +92,46 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate, showToast:
             alert('Failed to generate child link');
         } finally {
             setGenerating(false);
+        }
+    };
+
+    const handleEditUrl = () => {
+        setEditUrlValue(link.url);
+        setIsEditingUrl(true);
+    };
+
+    const handleSaveUrl = async () => {
+        if (!editUrlValue.trim()) {
+            showToast('URL cannot be empty', 'error');
+            return;
+        }
+        try {
+            new URL(editUrlValue);
+        } catch {
+            showToast('Please enter a valid URL (including https://)', 'error');
+            return;
+        }
+
+        setSavingUrl(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/links/${link.$id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: editUrlValue.trim() }),
+            });
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.error || 'Failed to update URL');
+            }
+            const updated = await response.json();
+            setLink(updated);
+            setIsEditingUrl(false);
+            showToast('Destination URL updated successfully');
+            if (onLinkUpdate) onLinkUpdate();
+        } catch (error) {
+            showToast(error.message || 'Failed to update URL', 'error');
+        } finally {
+            setSavingUrl(false);
         }
     };
 
@@ -183,26 +226,68 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate, showToast:
                                     </div>
 
                                     <div className="bg-slate-900/50 rounded-xl p-4">
-                                        <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Destination URL</label>
-                                        <div className="flex items-center justify-between mt-2 gap-2 min-w-0">
-                                            <a
-                                                href={link.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-xs sm:text-sm text-slate-300 hover:text-white truncate min-w-0 flex-1"
-                                            >
-                                                {link.url}
-                                            </a>
-                                            <button
-                                                onClick={() => copyToClipboard(link.url)}
-                                                className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded transition-colors shrink-0 cursor-pointer"
-                                                title="Copy URL"
-                                            >
-                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                                                </svg>
-                                            </button>
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Destination URL</label>
+                                            {!isEditingUrl && (
+                                                <button
+                                                    onClick={handleEditUrl}
+                                                    className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors cursor-pointer"
+                                                >
+                                                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    </svg>
+                                                    Edit
+                                                </button>
+                                            )}
                                         </div>
+                                        {isEditingUrl ? (
+                                            <div className="mt-2 space-y-2">
+                                                <input
+                                                    type="url"
+                                                    value={editUrlValue}
+                                                    onChange={(e) => setEditUrlValue(e.target.value)}
+                                                    autoFocus
+                                                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveUrl(); if (e.key === 'Escape') setIsEditingUrl(false); }}
+                                                    className="block w-full bg-slate-900 border border-indigo-500/50 rounded-lg py-2 px-3 text-sm text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                                    placeholder="https://example.com/new-destination"
+                                                />
+                                                <div className="flex space-x-2">
+                                                    <button
+                                                        onClick={handleSaveUrl}
+                                                        disabled={savingUrl}
+                                                        className="flex-1 py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+                                                    >
+                                                        {savingUrl ? 'Saving...' : 'Save Changes'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setIsEditingUrl(false)}
+                                                        className="flex-1 py-2 px-3 bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between mt-2 gap-2 min-w-0">
+                                                <a
+                                                    href={link.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-xs sm:text-sm text-slate-300 hover:text-white truncate min-w-0 flex-1"
+                                                >
+                                                    {link.url}
+                                                </a>
+                                                <button
+                                                    onClick={() => copyToClipboard(link.url)}
+                                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded transition-colors shrink-0 cursor-pointer"
+                                                    title="Copy URL"
+                                                >
+                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="bg-slate-900/50 rounded-xl p-4">
