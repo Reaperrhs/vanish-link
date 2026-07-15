@@ -66,42 +66,46 @@ const LinkItem = ({
                         <span className="sm:inline hidden">Clicks: </span><span className="font-bold text-white ml-1">{link.clicks} clicks</span>
                     </div>
 
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-1.5 sm:space-x-2">
                         <button
                             onClick={() => onCopy(link.$id)}
-                            className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+                            className="flex items-center gap-1.5 px-2.5 py-2 text-slate-400 hover:text-blue-400 hover:bg-blue-900/20 rounded-lg transition-all cursor-pointer group"
                             title="Copy Short URL"
                         >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                             </svg>
+                            <span className="hidden lg:inline text-xs font-medium">Copy</span>
                         </button>
                         <button
                             onClick={() => onQR(link)}
-                            className="p-2 text-slate-400 hover:text-purple-400 hover:bg-purple-900/20 rounded-lg transition-colors cursor-pointer"
+                            className="flex items-center gap-1.5 px-2.5 py-2 text-slate-400 hover:text-purple-400 hover:bg-purple-900/20 rounded-lg transition-all cursor-pointer group"
                             title="Generate QR Code"
                         >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h2M8 20h2M4 8h2M4 16h2m-2-4h2m2 4h.01" />
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h7v7H3V3zm0 11h7v7H3v-7zm11-11h7v7h-7V3zm0 11h3v3h-3v-3zm5 0h2v2h-2v-2zm-5 5h2v2h-2v-2zm5 0h2v2h-2v-2zm0-5h2v2h-2v-2z" />
                             </svg>
+                            <span className="hidden lg:inline text-xs font-medium">QR</span>
                         </button>
                         <button
                             onClick={() => onSelectLink(link)}
-                            className="p-2 text-slate-400 hover:text-indigo-400 hover:bg-indigo-900/20 rounded-lg transition-colors cursor-pointer"
+                            className="flex items-center gap-1.5 px-2.5 py-2 text-slate-400 hover:text-indigo-400 hover:bg-indigo-900/20 rounded-lg transition-all cursor-pointer group"
                             title="View Details"
                         >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
+                            <span className="hidden lg:inline text-xs font-medium">Details</span>
                         </button>
                         <button
                             onClick={() => onDelete(link.$id)}
-                            className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-colors cursor-pointer"
+                            className="flex items-center gap-1.5 px-2.5 py-2 text-slate-400 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-all cursor-pointer group"
                             title="Delete"
                         >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
+                            <span className="hidden lg:inline text-xs font-medium">Delete</span>
                         </button>
                     </div>
                 </div>
