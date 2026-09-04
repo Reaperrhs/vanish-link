@@ -1,0 +1,62 @@
+name: Validate & Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate (backend syntax + frontend build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Backend - install & syntax check
+        run: |
+          npm ci
+          node --check backend/index.js
+          node --check mcp-server.mjs
+          for f in backend/scripts/*.js; do node --check "$f"; done
+
+      - name: Frontend - install & build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+  deploy:
+    name: Deploy over SSH
+    needs: validate
+    # Runs only on pushes to main AND only once the server secrets have been
+    # added under Settings -> Secrets and variables -> Actions. Until then the
+    # job skips itself; validation still runs on every push.
+    if: >
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      secrets.SSH_HOST != '' &&
+      secrets.SSH_USER != '' &&
+      secrets.SSH_KEY != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull & rebuild via docker compose
+        uses: appleboy/ssh-action@v1
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          user: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: DEPLOY_PATH
+          script: |
+            set -e
+            cd "${DEPLOY_PATH:-$HOME/vanish-link}"
+            git pull --ff-only origin main
+            docker compose up -d --build
+            docker image prune -f

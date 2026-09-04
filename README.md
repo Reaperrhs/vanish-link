@@ -77,6 +77,31 @@ Set `SWEEP_TOKEN` to require the header, and `ANALYTICS_RETENTION_DAYS` (e.g. `3
 */15 * * * * curl -fsS -X POST http://localhost:3000/api/sweep -H "x-sweep-token: ..." >/dev/null
 ```
 
+## CI/CD (GitHub)
+
+`.github/workflows/deploy.yml` runs on every push:
+
+1. **Validate** — backend dependency install + syntax check, frontend production build. Runs for all pushes and PRs to `main`.
+2. **Deploy** — on pushes to `main`, SSHes into your server, runs `git pull` and `docker compose up -d --build`. Only active once the repository secrets below exist; until then the job skips itself.
+
+| Secret | Meaning |
+|---|---|
+| `SSH_HOST` | Server hostname or IP |
+| `SSH_USER` | SSH user (needs Docker access) |
+| `SSH_KEY` | Private SSH key (OpenSSH format) |
+| `DEPLOY_PATH` | Optional — directory containing the repo clone (default `$HOME/vanish-link`) |
+
+Add them under **Settings → Secrets and variables → Actions**. One-time server prep:
+
+```bash
+git clone https://github.com/Reaperrhs/vanish-link.git ~/vanish-link
+cd ~/vanish-link
+cp .env.example .env   # fill in — docker-compose interpolates from this file
+docker compose up -d --build
+```
+
+The pipeline deploys the backend and frontend containers only; Appwrite itself is managed separately (self-hosted or cloud).
+
 ## Operational notes
 
 - **Rate limiting** — `POST /api/shorten` allows 20 requests/IP/minute (in-memory, per process).
