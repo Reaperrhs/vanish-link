@@ -1,14 +1,19 @@
 {
-  "name": "url-sortener",
+  "name": "vanish-link",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Self-hosted URL shortener with one-time and expiring links, powered by Appwrite",
+  "main": "backend/index.js",
   "scripts": {
     "start": "node backend/index.js",
     "mcp": "node mcp-server.mjs",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "init:appwrite": "node backend/scripts/initialize_appwrite.js",
+    "migrate:country": "node backend/scripts/add_country_attribute.js"
   },
-  "keywords": [],
+  "keywords": [
+    "url-shortener",
+    "appwrite",
+    "vanish-link"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
@@ -17,7 +22,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
-    "nanoid": "^5.1.6",
+    "geoip-lite": "^1.4.10",
     "node-appwrite": "^20.3.0",
     "node-fetch": "^3.3.2"
   }

@@ -61,6 +61,8 @@ const DashboardSkeleton = () => (
 const Dashboard = () => {
     const [links, setLinks] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(false);
     const [showArchived, setShowArchived] = useState(false);
     const [selectedLinks, setSelectedLinks] = useState([]);
     const [filteredLinks, setFilteredLinks] = useState([]);
@@ -71,22 +73,41 @@ const Dashboard = () => {
     const [currentWorkspace, setCurrentWorkspace] = useState('all');
     const [qrLink, setQrLink] = useState(null);
 
-    const fetchLinks = async () => {
-        setLoading(true);
+    const PAGE_SIZE = 50;
+
+    // Cursor-paginated fetch. Child links are excluded server-side so they
+    // don't consume page slots (they're tracked under their parent instead).
+    const fetchLinks = async (cursor) => {
+        if (!cursor) setLoading(true); else setLoadingMore(true);
         try {
-            const response = await databases.listDocuments(
-                DATABASE_ID,
-                COLLECTION_ID,
-                [Query.orderDesc('$createdAt'), Query.limit(100)]
-            );
-            // Sorting is already descending by index, but we ensure frontend state is clean
-            setLinks(response.documents);
+            const queries = [
+                Query.orderDesc('$createdAt'),
+                Query.isNull('parentId'),
+                Query.limit(PAGE_SIZE)
+            ];
+            if (cursor) queries.push(Query.cursorAfter(cursor));
+
+            const response = await databases.listDocuments(DATABASE_ID, COLLECTION_ID, queries);
+
+            setLinks(prev => {
+                if (!cursor) return response.documents;
+                // Realtime may have already delivered some of these docs
+                const seen = new Set(prev.map(l => l.$id));
+                return [...prev, ...response.documents.filter(l => !seen.has(l.$id))];
+            });
+            setHasMore(response.documents.length === PAGE_SIZE);
         } catch (error) {
             console.error('Error fetching links:', error);
             showToastNotification('Failed to fetch links', 'error');
         } finally {
             setLoading(false);
+            setLoadingMore(false);
         }
+    };
+
+    const handleLoadMore = () => {
+        const last = links[links.length - 1];
+        if (last) fetchLinks(last.$id);
     };
 
     useEffect(() => {
@@ -340,6 +361,17 @@ const Dashboard = () => {
                             ) : (
                                 <p className="mt-1 text-sm text-slate-500">Try adjusting your filters or create a new link.</p>
                             )}
+                        </li>
+                    )}
+                    {hasMore && (
+                        <li className="px-6 py-4 text-center border-t border-white/5">
+                            <button
+                                onClick={handleLoadMore}
+                                disabled={loadingMore}
+                                className="px-4 py-2 text-xs font-semibold text-indigo-300 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                            >
+                                {loadingMore ? 'Loading...' : 'Load More'}
+                            </button>
                         </li>
                     )}
                 </ul>

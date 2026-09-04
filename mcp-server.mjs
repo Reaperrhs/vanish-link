@@ -248,10 +248,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
             case "get_link_analytics": {
                 const { slug } = args;
-                
-                const link = await databases.getDocument(DATABASE_ID, COLLECTION_ID, slug);
+
+                // Resolve by document ID first, then fall back to the slug
+                // field — links created through the Express API store the slug
+                // as an attribute, not as the document ID
+                let link;
+                try {
+                    link = await databases.getDocument(DATABASE_ID, COLLECTION_ID, slug);
+                } catch (e) {
+                    const slugResponse = await databases.listDocuments(DATABASE_ID, COLLECTION_ID, [
+                        Query.equal("slug", slug),
+                        Query.limit(1)
+                    ]);
+                    if (slugResponse.documents.length === 0) {
+                        throw new Error(`Link '${slug}' not found`);
+                    }
+                    link = slugResponse.documents[0];
+                }
+
                 const children = await databases.listDocuments(DATABASE_ID, COLLECTION_ID, [
-                    Query.equal("parentId", slug),
+                    Query.equal("parentId", link.$id),
                     Query.limit(100)
                 ]);
 

@@ -506,6 +506,35 @@ const LinkDetailsModal = ({ link: initialLink, onClose, onLinkUpdate, showToast:
                                             </div>
                                         </div>
                                     </div>
+
+                                    {analytics.countries && analytics.countries.length > 0 && (
+                                        <div className="bg-slate-900/50 rounded-xl p-4">
+                                            <h5 className="text-sm font-medium text-white mb-3">Top Countries</h5>
+                                            <div className="space-y-2">
+                                                {analytics.countries.map(({ country, count }) => {
+                                                    const flag = country.length === 2
+                                                        ? String.fromCodePoint(...[...country.toUpperCase()].map(c => 127397 + c.charCodeAt(0)))
+                                                        : '🌐';
+                                                    const max = analytics.countries[0].count;
+                                                    const pct = Math.max(2, Math.round((count / max) * 100));
+                                                    return (
+                                                        <div key={country} className="flex items-center justify-between">
+                                                            <span className="text-sm text-slate-300">{flag} {country}</span>
+                                                            <div className="flex items-center space-x-2">
+                                                                <div className="w-24 bg-slate-700 rounded-full h-2">
+                                                                    <div
+                                                                        className="bg-emerald-500 h-2 rounded-full"
+                                                                        style={{ width: `${pct}%` }}
+                                                                    ></div>
+                                                                </div>
+                                                                <span className="text-sm text-slate-400">{count}</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

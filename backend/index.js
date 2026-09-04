@@ -18,6 +18,14 @@ process.on('unhandledRejection', (reason, promise) => {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Only honor X-Forwarded-* headers when sitting behind a known reverse proxy.
+// Opt-in via env: the backend is also reachable directly, where trusting the
+// header would let clients spoof their IP to dodge the rate limiter.
+if (process.env.TRUST_PROXY) {
+    const hops = parseInt(process.env.TRUST_PROXY, 10);
+    app.set('trust proxy', Number.isNaN(hops) ? 1 : hops);
+}
+
 app.use(cors());
 app.use(express.json());
 
@@ -107,23 +115,148 @@ app.get('/api/links', async (req, res) => {
     }
 });
 
-// Rate limiter for POST /api/shorten — 20 requests per IP per minute
+// Rate limiter for POST /api/shorten — fixed window per client IP
 const shortenRateLimiter = new Map();
+const RATE_WINDOW_MS = 60 * 1000;
+const RATE_MAX_REQUESTS = 20;
+
 function checkRateLimit(ip) {
     const now = Date.now();
-    const windowMs = 60 * 1000;
-    const maxRequests = 20;
-    if (!shortenRateLimiter.has(ip)) {
-        shortenRateLimiter.set(ip, []);
+    // Bound memory: once the map grows large, drop IPs whose window has lapsed
+    if (shortenRateLimiter.size > 1000) {
+        for (const [key, entry] of shortenRateLimiter) {
+            if (now >= entry.resetAt) shortenRateLimiter.delete(key);
+        }
     }
-    const requests = shortenRateLimiter.get(ip);
-    const validRequests = requests.filter(timestamp => now - timestamp < windowMs);
-    if (validRequests.length >= maxRequests) {
-        return false;
+    let entry = shortenRateLimiter.get(ip);
+    if (!entry || now >= entry.resetAt) {
+        entry = { count: 0, resetAt: now + RATE_WINDOW_MS };
+        shortenRateLimiter.set(ip, entry);
     }
-    validRequests.push(now);
-    shortenRateLimiter.set(ip, validRequests);
-    return true;
+    entry.count += 1;
+    return entry.count <= RATE_MAX_REQUESTS;
+}
+
+// --- Counter write coalescing -------------------------------------------------
+// Click/burn/generate counters are accumulated in memory and flushed to
+// Appwrite in batches. This removes a document write from every redirect and
+// eliminates the lost-update race of the old per-request read-modify-write.
+const pendingIncrements = new Map(); // docId -> { clicks, burnedCount, generatedCount }
+const INCREMENT_FLUSH_MS = 3000;
+let flushingIncrements = false;
+
+function queueIncrement(docId, fields) {
+    const current = pendingIncrements.get(docId) || { clicks: 0, burnedCount: 0, generatedCount: 0 };
+    for (const [key, value] of Object.entries(fields)) {
+        current[key] = (current[key] || 0) + value;
+    }
+    pendingIncrements.set(docId, current);
+}
+
+async function flushPendingIncrements() {
+    if (flushingIncrements || pendingIncrements.size === 0) return;
+    flushingIncrements = true;
+    try {
+        for (const [docId, delta] of [...pendingIncrements.entries()]) {
+            try {
+                const snapshot = { clicks: delta.clicks, burnedCount: delta.burnedCount, generatedCount: delta.generatedCount };
+                await withDocLock(docId, async () => {
+                    const doc = await databases.getDocument(DATABASE_ID, COLLECTION_ID, docId);
+                    const update = {};
+                    if (snapshot.clicks) update.clicks = (doc.clicks || 0) + snapshot.clicks;
+                    if (snapshot.burnedCount) update.burnedCount = (doc.burnedCount || 0) + snapshot.burnedCount;
+                    if (snapshot.generatedCount) update.generatedCount = (doc.generatedCount || 0) + snapshot.generatedCount;
+                    await databases.updateDocument(DATABASE_ID, COLLECTION_ID, docId, update);
+                });
+                // Subtract what was persisted; clicks queued while the write was
+                // in flight must survive for the next flush
+                for (const key of Object.keys(snapshot)) {
+                    delta[key] -= snapshot[key] || 0;
+                }
+                if (!Object.values(delta).some(v => v > 0)) {
+                    pendingIncrements.delete(docId);
+                }
+            } catch (e) {
+                if (e.code === 404) {
+                    // Link was deleted — drop its pending counters
+                    pendingIncrements.delete(docId);
+                } else {
+                    console.error('Error flushing counter increments:', e);
+                    // Keep the delta so the next flush retries it
+                }
+            }
+        }
+    } finally {
+        flushingIncrements = false;
+    }
+}
+
+setInterval(() => {
+    flushPendingIncrements().catch(() => {});
+}, INCREMENT_FLUSH_MS).unref();
+
+// --- Per-document operation lock ----------------------------------------------
+// Serializes read-modify-write cycles per document within this process, so
+// concurrent requests (e.g. two simultaneous opens of a one-time link) cannot
+// interleave and double-burn / double-count.
+const docLocks = new Map();
+
+function withDocLock(docId, fn) {
+    const tail = (docLocks.get(docId) || Promise.resolve()).catch(() => {});
+    const run = tail.then(fn);
+    const next = run.catch(() => {});
+    docLocks.set(docId, next);
+    next.then(() => {
+        if (docLocks.get(docId) === next) docLocks.delete(docId);
+    });
+    return run;
+}
+
+// Burn a one-time link atomically: re-reads the doc inside the lock and only
+// redirects the caller that performed the active -> inactive transition.
+async function burnOneTimeLink(docId) {
+    return withDocLock(docId, async () => {
+        const fresh = await databases.getDocument(DATABASE_ID, COLLECTION_ID, docId);
+        if (!fresh.active) return false;
+        await databases.updateDocument(DATABASE_ID, COLLECTION_ID, docId, {
+            active: false,
+            clicks: (fresh.clicks || 0) + 1,
+            burnedCount: (fresh.burnedCount || 0) + 1
+        });
+        return true;
+    });
+}
+
+// --- Redirect cache ------------------------------------------------------------
+// Short-TTL in-memory cache for the redirect hot path. Only permanent standard
+// links are cached: one-time links must burn on open and 24h links flip to
+// inactive on expiry, so both always hit the database. Dashboard edits/deletes
+// that go straight to Appwrite are picked up when the TTL lapses.
+const redirectCache = new Map(); // slug -> { $id, url, cachedAt }
+const REDIRECT_CACHE_TTL_MS = 30 * 1000;
+const REDIRECT_CACHE_MAX = 1000;
+
+function redirectCacheGet(slug) {
+    const entry = redirectCache.get(slug);
+    if (!entry) return null;
+    if (Date.now() - entry.cachedAt > REDIRECT_CACHE_TTL_MS) {
+        redirectCache.delete(slug);
+        return null;
+    }
+    return entry;
+}
+
+function redirectCacheSet(slug, doc) {
+    if (doc.type !== 'standard' || !doc.active || doc.expiresAt) return;
+    if (redirectCache.size >= REDIRECT_CACHE_MAX) {
+        redirectCache.delete(redirectCache.keys().next().value);
+    }
+    redirectCache.delete(slug); // re-insert so LRU order follows recency
+    redirectCache.set(slug, { $id: doc.$id, url: doc.url, cachedAt: Date.now() });
+}
+
+function redirectCacheInvalidate(slug) {
+    redirectCache.delete(slug);
 }
 
 // Create Link
@@ -179,7 +312,7 @@ app.post('/api/shorten', async (req, res) => {
             }
         }
 
-        const generatedSlug = slug || Math.random().toString(36).substring(2, 8);
+        const generatedSlug = slug || crypto.randomBytes(4).toString('hex');
 
         // Check for slug collision
         const existingSlug = await databases.listDocuments(
@@ -215,15 +348,8 @@ app.post('/api/shorten', async (req, res) => {
 
         if (parentId) {
             payload.parentId = parentId;
-            // Increment generatedCount on parent
-            try {
-                const parent = await databases.getDocument(DATABASE_ID, COLLECTION_ID, parentId);
-                await databases.updateDocument(DATABASE_ID, COLLECTION_ID, parentId, {
-                    generatedCount: (parent.generatedCount || 0) + 1
-                });
-            } catch (e) {
-                console.error('Error updating parent count:', e);
-            }
+            // Increment generatedCount on parent (batched, race-free)
+            queueIncrement(parentId, { generatedCount: 1 });
         }
 
 
@@ -260,6 +386,8 @@ app.post('/api/shorten', async (req, res) => {
 // Reset Stats for a single link
 app.post('/api/reset/:slug', async (req, res) => {
     try {
+        // Drain queued counter writes first so they cannot re-add counts after the reset
+        await flushPendingIncrements();
         const { slug } = req.params;
 
         // Look up document by slug field first, fall back to document ID for old links
@@ -313,6 +441,7 @@ app.post('/api/reset/:slug', async (req, res) => {
 // Reset All Stats (optionally filtered by workspace)
 app.post('/api/reset-all', async (req, res) => {
     try {
+        await flushPendingIncrements();
         const { workspaceId } = req.body;
         const queries = [];
         
@@ -344,7 +473,70 @@ app.post('/api/reset-all', async (req, res) => {
     }
 });
 
+// Scheduled maintenance — point a cron job at this endpoint (see README).
+// Marks links whose expiresAt has passed as inactive (the redirect path only
+// does this lazily on visit), and optionally prunes click telemetry older than
+// ANALYTICS_RETENTION_DAYS. Protect with SWEEP_TOKEN when exposed.
+app.post('/api/sweep', async (req, res) => {
+    const sweepToken = process.env.SWEEP_TOKEN;
+    if (sweepToken && req.get('x-sweep-token') !== sweepToken) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        await flushPendingIncrements();
+
+        let expiredCount = 0;
+        while (true) {
+            const batch = await databases.listDocuments(DATABASE_ID, COLLECTION_ID, [
+                Query.equal('active', true),
+                Query.lessThan('expiresAt', new Date().toISOString()),
+                Query.limit(100)
+            ]);
+            if (batch.documents.length === 0) break;
+            await Promise.all(batch.documents.map(doc =>
+                databases.updateDocument(DATABASE_ID, COLLECTION_ID, doc.$id, { active: false })
+            ));
+            expiredCount += batch.documents.length;
+            if (batch.documents.length < 100) break;
+        }
+
+        let prunedLogs = 0;
+        const retentionDays = parseInt(process.env.ANALYTICS_RETENTION_DAYS, 10);
+        if (!Number.isNaN(retentionDays) && retentionDays > 0) {
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - retentionDays);
+            while (true) {
+                const batch = await databases.listDocuments(DATABASE_ID, ANALYTICS_COLLECTION_ID, [
+                    Query.lessThan('timestamp', cutoff.toISOString()),
+                    Query.limit(100)
+                ]);
+                if (batch.documents.length === 0) break;
+                await Promise.all(batch.documents.map(log =>
+                    databases.deleteDocument(DATABASE_ID, ANALYTICS_COLLECTION_ID, log.$id)
+                ));
+                prunedLogs += batch.documents.length;
+                if (batch.documents.length < 100) break;
+            }
+        }
+
+        res.json({ success: true, expiredLinks: expiredCount, prunedLogs });
+    } catch (error) {
+        console.error('Error during sweep:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Helper to track clicks asynchronously
+// Country resolution is offline via geoip-lite's local database, so the raw IP
+// never leaves this server — it is hashed and discarded right after.
+let geoip = null;
+try {
+    geoip = require('geoip-lite');
+} catch (e) {
+    console.warn('geoip-lite is not installed — analytics will not record countries');
+}
+
 function trackClickAsync(docId, req) {
     const userAgent = req.get('user-agent') || '';
     const rawReferrer = req.get('referrer') || req.get('referer') || 'Direct';
@@ -389,21 +581,50 @@ function trackClickAsync(docId, req) {
     const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
     const ipHash = crypto.createHash('sha256').update(ip).digest('hex');
 
+    // Resolve country from the IP before it is discarded
+    let country = null;
+    if (geoip && ip) {
+        try {
+            const geo = geoip.lookup(ip);
+            if (geo && geo.country) country = geo.country;
+        } catch (e) {
+            // GeoIP is best-effort; never let it break click tracking
+        }
+    }
+
     // Create log in background
+    const payload = {
+        linkId: docId,
+        timestamp: new Date().toISOString(),
+        browser,
+        device,
+        referrer,
+        ipHash
+    };
+    if (country) payload.country = country;
+
     databases.createDocument(
         DATABASE_ID,
         ANALYTICS_COLLECTION_ID,
         ID.unique(),
-        {
-            linkId: docId,
-            timestamp: new Date().toISOString(),
-            browser,
-            device,
-            referrer,
-            ipHash
-        }
+        payload
     ).catch(err => {
-        console.error('Error writing analytics document to Appwrite:', err);
+        // Schemas created before the country attribute existed reject the
+        // field — retry once without it so the click log is not lost
+        const msg = (err.message || '').toLowerCase();
+        if (payload.country && (msg.includes('attribute') || msg.includes('country'))) {
+            const { country: _omit, ...rest } = payload;
+            databases.createDocument(
+                DATABASE_ID,
+                ANALYTICS_COLLECTION_ID,
+                ID.unique(),
+                rest
+            ).catch(retryErr => {
+                console.error('Error writing analytics document to Appwrite:', retryErr);
+            });
+        } else {
+            console.error('Error writing analytics document to Appwrite:', err);
+        }
     });
 }
 
@@ -452,6 +673,7 @@ app.get('/api/analytics/:id', async (req, res) => {
         const devices = { mobile: 0, desktop: 0, tablet: 0 };
         const browsers = { chrome: 0, safari: 0, firefox: 0, edge: 0, other: 0 };
         const referrersCount = { Direct: 0, 'Social Media': 0, Referral: 0 };
+        const countryCounts = {};
         const uniqueIps = new Set();
 
         // Calculate click distribution over the last 7 days
@@ -489,6 +711,11 @@ app.get('/api/analytics/:id', async (req, res) => {
             // Unique IP hash
             if (log.ipHash) {
                 uniqueIps.add(log.ipHash);
+            }
+
+            // Countries (only present on logs written after the geo migration)
+            if (log.country) {
+                countryCounts[log.country] = (countryCounts[log.country] || 0) + 1;
             }
 
             // Clicks Over Time
@@ -542,6 +769,12 @@ app.get('/api/analytics/:id', async (req, res) => {
             clicks: count
         }));
 
+        // Top countries by click count
+        const countries = Object.entries(countryCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10)
+            .map(([country, count]) => ({ country, count }));
+
         res.json({
             totalClicks: link.clicks || 0,
             uniqueVisitors: uniqueIps.size,
@@ -550,6 +783,7 @@ app.get('/api/analytics/:id', async (req, res) => {
             devices: devicePercentages,
             browsers: browserPercentages,
             referrers,
+            countries,
             clicksOverTime
         });
 
@@ -584,6 +818,7 @@ app.put('/api/links/:id', async (req, res) => {
             }
         } catch (e) {}
         const doc = await databases.updateDocument(DATABASE_ID, COLLECTION_ID, docId, { url });
+        redirectCacheInvalidate(req.params.id);
         res.json(doc);
     } catch (error) {
         if (error.code === 404) {
@@ -597,6 +832,14 @@ app.put('/api/links/:id', async (req, res) => {
 // Redirect Logic
 app.get('/:slug', async (req, res) => {
     const { slug } = req.params;
+
+    // Hot path: permanent standard links skip the database entirely
+    const cached = redirectCacheGet(slug);
+    if (cached) {
+        queueIncrement(cached.$id, { clicks: 1 });
+        trackClickAsync(cached.$id, req);
+        return res.redirect(cached.url);
+    }
 
     try {
         // Look up by slug field first, fall back to document ID for old links
@@ -630,25 +873,17 @@ app.get('/:slug', async (req, res) => {
             }
         }
 
-        // Check One-Time
+        // Check One-Time — only the request that performs the active -> inactive
+        // transition gets redirected; concurrent openers receive 410
         if (doc.type === 'onetime') {
-            // Soft Delete (Burn)
-            await databases.updateDocument(DATABASE_ID, COLLECTION_ID, doc.$id, {
-                active: false,
-                clicks: (doc.clicks || 0) + 1,
-                burnedCount: (doc.burnedCount || 0) + 1
-            });
+            const burned = await burnOneTimeLink(doc.$id);
+            if (!burned) {
+                return res.status(410).send('Link has expired or been burned');
+            }
 
-            // Update Parent Burned Count
+            // Update Parent Burned Count (batched)
             if (doc.parentId) {
-                try {
-                    const parent = await databases.getDocument(DATABASE_ID, COLLECTION_ID, doc.parentId);
-                    await databases.updateDocument(DATABASE_ID, COLLECTION_ID, doc.parentId, {
-                        burnedCount: (parent.burnedCount || 0) + 1
-                    });
-                } catch (e) {
-                    console.error('Error updating parent burned count:', e);
-                }
+                queueIncrement(doc.parentId, { burnedCount: 1 });
             }
 
             trackClickAsync(doc.$id, req);
@@ -656,12 +891,12 @@ app.get('/:slug', async (req, res) => {
             return res.redirect(doc.url);
         }
 
-        // Standard: Update clicks
-        await databases.updateDocument(DATABASE_ID, COLLECTION_ID, doc.$id, {
-            clicks: (doc.clicks || 0) + 1
-        });
+        // Standard: queue click counter (batched flush)
+        queueIncrement(doc.$id, { clicks: 1 });
 
         trackClickAsync(doc.$id, req);
+
+        redirectCacheSet(slug, doc);
 
         return res.redirect(doc.url);
 

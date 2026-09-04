@@ -2,7 +2,7 @@ const { Client, Databases, Permission, Role } = require('node-appwrite');
 const dotenv = require('dotenv');
 const path = require('path');
 
-dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const client = new Client()
     .setEndpoint(process.env.APPWRITE_ENDPOINT)
