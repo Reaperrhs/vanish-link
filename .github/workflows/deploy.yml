@@ -11,6 +11,8 @@ jobs:
   validate:
     name: Validate (backend syntax + frontend build)
     runs-on: ubuntu-latest
+    outputs:
+      deploy_ready: ${{ steps.deploy_config.outputs.ready }}
     steps:
       - uses: actions/checkout@v4
 
@@ -31,18 +33,32 @@ jobs:
           npm ci
           npm run build
 
+      # The secrets context is not available in job-level if-conditions, so
+      # deploy readiness is computed here as a step output instead.
+      - name: Check deploy configuration
+        id: deploy_config
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          if [ -n "$SSH_HOST" ] && [ -n "$SSH_USER" ] && [ -n "$SSH_KEY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "Deploy secrets found — deploy job will run."
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Deploy secrets not configured — deploy job will be skipped."
+          fi
+
   deploy:
     name: Deploy over SSH
     needs: validate
-    # Runs only on pushes to main AND only once the server secrets have been
-    # added under Settings -> Secrets and variables -> Actions. Until then the
-    # job skips itself; validation still runs on every push.
+    # Runs only on pushes to main and only once SSH_HOST/SSH_USER/SSH_KEY have
+    # been added under Settings -> Secrets and variables -> Actions.
     if: >
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
-      secrets.SSH_HOST != '' &&
-      secrets.SSH_USER != '' &&
-      secrets.SSH_KEY != ''
+      needs.validate.outputs.deploy_ready == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Pull & rebuild via docker compose
